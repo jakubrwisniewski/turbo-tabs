@@ -1,22 +1,13 @@
-html,
-body {
-  margin: 0;
-  display: 0;
-  height: 100%;
-  width: 100%;
-}
-* {
-  box-sizing: border-box;
-}
-:focus {
-  outline: 0;
-}
-.wrapper {
+.turbo-tabs {
   width: 100%;
   height: 100%;
   overflow: hidden;
+  box-sizing: border-box;
 }
-.buttons {
+.turbo-tabs * {
+  box-sizing: border-box;
+}
+.turbo-tabs .buttons {
   height: 45px;
   padding: 15px 0 0 0;
   text-align: center;
@@ -24,7 +15,7 @@ body {
   display: flex;
   flex-shrink: 0;
 }
-.buttons button {
+.turbo-tabs .buttons button {
   margin: 0 5px;
   border: 0;
   border-radius: 16px;
@@ -35,25 +26,25 @@ body {
   background: white;
   font-weight: bold;
 }
-.buttons button:hover {
+.turbo-tabs .buttons button:hover {
   opacity: 1;
 }
-.buttons button.active {
+.turbo-tabs .buttons button.active {
   color: white!important;
 }
-.pages {
+.turbo-tabs .pages {
   height: calc(100% - 45px);
   overflow: hidden;
   display: flex;
   transition: transform 0.3s ease;
 }
-.pages .page {
+.turbo-tabs .pages .page {
   height: 100%;
   padding: 15px;
   flex-shrink: 0;
   text-align: center;
 }
-.drop {
+.turbo-tabs .drop {
   position: fixed;
   top: 0;
   left: 0;
@@ -65,10 +56,10 @@ body {
   opacity: 0;
   transition: opacity 0.3s ease;
 }
-.drop.visible {
+.turbo-tabs .drop.visible {
   opacity: 1;
 }
-.sheet {
+.turbo-tabs .sheet {
   position: fixed;
   padding: 15px;
   background: white;
@@ -77,18 +68,14 @@ body {
   transition: transform 0.3s ease;
   transform: translate3d(0, 0, 0);
 }
-.bottom {
+.turbo-tabs .bottom {
   bottom: -100%;
   height: 100%;
 }
-.bottom.preview {
+.turbo-tabs .bottom .preview {
   transform: translate3d(0, -100px, 0);
   box-shadow: 0 0 16px -2px #666;
 }
-.bottom.full {
+.turbo-tabs .bottom .full {
   transform: translate3d(0, -100%, 0);
-}
-.search {
-  top: -100%;
-  height: 100%;
 }

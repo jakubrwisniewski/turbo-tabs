@@ -1,93 +1,205 @@
 $.mobile.loading().remove(); // remove stupid loading
 $.event.special.tap.emitTapOnTaphold = false; // prevents tap after taphold
+
 (function() {
+    var supportTouch = $.support.touch,
+        touchStartEvent = supportTouch ? "touchstart" : "mousedown",
+        touchStopEvent = supportTouch ? "touchend" : "mouseup",
+        touchMoveEvent = supportTouch ? "touchmove" : "mousemove";
+    $.event.special.swipeUpDown = {
+        setup: function() {
+            var thisObject = this;
+            var $this = $(thisObject);
+            $this.bind(touchStartEvent, function(event) {
+                var data = event.originalEvent.touches ?
+                    event.originalEvent.touches[0] :
+                    event,
+                    start = {
+                        time: (new Date).getTime(),
+                        coords: [data.pageX, data.pageY],
+                        origin: $(event.target)
+                    },
+                    stop;
 
+                function moveHandler(event) {
+                    if(!start) {
+                        return;
+                    }
+                    var data = event.originalEvent.touches ?
+                        event.originalEvent.touches[0] :
+                        event;
+                    stop = {
+                        time: (new Date).getTime(),
+                        coords: [data.pageX, data.pageY]
+                    };
 
-	(function() {
-		var supportTouch = $.support.touch,
-			scrollEvent = "touchmove scroll",
-			touchStartEvent = supportTouch ? "touchstart" : "mousedown",
-			touchStopEvent = supportTouch ? "touchend" : "mouseup",
-			touchMoveEvent = supportTouch ? "touchmove" : "mousemove";
-		$.event.special.swipeupdown = {
-			setup: function() {
-				var thisObject = this;
-				var $this = $(thisObject);
-				$this.bind(touchStartEvent, function(event) {
-					var data = event.originalEvent.touches ?
-						event.originalEvent.touches[0] :
-						event,
-						start = {
-							time: (new Date).getTime(),
-							coords: [data.pageX, data.pageY],
-							origin: $(event.target)
-						},
-						stop;
+                    // prevent scrolling
+                    if(Math.abs(start.coords[1] - stop.coords[1]) > 10) {
+                        event.preventDefault();
+                    }
+                }
+                $this
+                    .bind(touchMoveEvent, moveHandler)
+                    .one(touchStopEvent, function() {
+                        $this.unbind(touchMoveEvent, moveHandler);
+                        if(start && stop) {
+                            if(stop.time - start.time < 1000 &&
+                                Math.abs(start.coords[1] - stop.coords[1]) > 30 &&
+                                Math.abs(start.coords[0] - stop.coords[0]) < 75) {
+                                start.origin
+                                    .trigger("swipeUpDown")
+                                    .trigger(start.coords[1] > stop.coords[1] ? "swipeup" : "swipedown");
+                            }
+                        }
+                        start = stop = undefined;
+                    });
+            });
+        }
+    };
+    $.each({
+        swipedown: "swipeUpDown",
+        swipeup: "swipeUpDown"
+    }, function(event, sourceEvent) {
+        $.event.special[event] = {
+            setup: function() {
+                $(this).bind(sourceEvent, $.noop);
+            }
+        };
+    });
 
-					function moveHandler(event) {
-						if(!start) {
-							return;
-						}
-						var data = event.originalEvent.touches ?
-							event.originalEvent.touches[0] :
-							event;
-						stop = {
-							time: (new Date).getTime(),
-							coords: [data.pageX, data.pageY]
-						};
+})();
+(function(self) {
 
-						// prevent scrolling
-						if(Math.abs(start.coords[1] - stop.coords[1]) > 10) {
-							event.preventDefault();
-						}
-					}
-					$this
-						.bind(touchMoveEvent, moveHandler)
-						.one(touchStopEvent, function(event) {
-							$this.unbind(touchMoveEvent, moveHandler);
-							if(start && stop) {
-								if(stop.time - start.time < 1000 &&
-									Math.abs(start.coords[1] - stop.coords[1]) > 30 &&
-									Math.abs(start.coords[0] - stop.coords[0]) < 75) {
-									start.origin
-										.trigger("swipeupdown")
-										.trigger(start.coords[1] > stop.coords[1] ? "swipeup" : "swipedown");
-								}
-							}
-							start = stop = undefined;
-						});
-				});
+    self.TurboTabs = function(element) {
+
+        (function() {
+			element.classList.add('turbo-tabs');
+
+			const buttons = document.createElement('header');
+			buttons.classList.add('buttons');
+
+			const pages = document.createElement('div');
+			pages.classList.add('pages');
+
+			element.appendChild(buttons);
+			element.appendChild(pages);
+		})();
+
+		this.element = element;
+
+		this.drop = new self.TurboTabs.Drop(this);
+        this.pages = new self.TurboTabs.Pages(this);
+		this.bottom = new self.TurboTabs.Bottom(this);
+
+		$(element).on('swipeup', function() {
+			if(this.bottom.isOpened()) {
+				this.bottom.moveUp();
 			}
+		}.bind(this));
+
+		$(element).on('swipedown', function() {
+			if(this.bottom.isOpened()) {
+				this.bottom.moveDown();
+			}
+		}.bind(this));
+
+    };
+
+})(window);
+(function(TurboTabs) {
+
+    TurboTabs.Bottom = function(turboTabsInstance) {
+		var CLOSED = 0,
+			PREVIEW = 1,
+			FULL = 2;
+
+		var wrapper = $(turboTabsInstance.element),
+			mode = CLOSED,
+			dom = $('<div class="sheet bottom">');
+
+		wrapper.append(dom);
+
+		var close = function() {
+			turboTabsInstance.drop.hide();
+			dom.removeClass('preview').removeClass('full');
+		}.bind(this);
+
+		this.moveUp = function() {
+			if(mode === CLOSED) {
+				dom.addClass('preview');
+				mode = PREVIEW;
+
+				turboTabsInstance.drop.onclick(close);
+			}
+			else if(mode === PREVIEW) {
+				dom.addClass('full').removeClass('preview');
+				mode = FULL;
+			}
+
+			if(mode !== CLOSED) turboTabsInstance.drop.show();
 		};
-		$.each({
-			swipedown: "swipeupdown",
-			swipeup: "swipeupdown"
-		}, function(event, sourceEvent) {
-			$.event.special[event] = {
-				setup: function() {
-					$(this).bind(sourceEvent, $.noop);
-				}
-			};
-		});
 
-	})();
-
-	(function() {
-		Browser = {};
-		Browser.__defineGetter__('isMobile', function() {
-			try {
-				document.createEvent("TouchEvent");
-				return true;
+		this.moveDown = function() {
+			if(mode === FULL) {
+				dom.addClass('preview').removeClass('full');
+				mode = PREVIEW;
 			}
-			catch(e) { }
+			else if(mode === PREVIEW) {
+				dom.removeClass('preview');
+				mode = CLOSED;
+			}
 
-			return false;
+			if(mode === CLOSED) turboTabsInstance.drop.hide();
+		};
+
+		dom.text('menu główne serwisu');
+
+		this.isOpened = function() {
+			return mode !== CLOSED;
+		};
+    };
+
+})(window.TurboTabs);
+(function(TurboTabs) {
+
+    TurboTabs.Drop = function(turboTabsInstance) {
+		var element = $('<div class="drop">'),
+			click = null;
+
+		$(turboTabsInstance.element).append(element);
+		element.hide();
+
+		this.show = function() {
+			element.show();
+			setTimeout(function() {
+				element.addClass('visible');
+			}, 10);
+			return this;
+		};
+
+		this.hide = function() {
+			element.removeClass('visible');
+			setTimeout(function() {
+				element.hide();
+			}, 300);
+			return this;
+		};
+
+		this.onclick = function(callback) {
+			if(callback) click = callback;
+			return this;
+		}
+
+		element.click(function(event) {
+			if(click) click(event);
 		});
-	})();
+    };
 
-	var Page = function(name, label, color) {
+})(window.TurboTabs);
+(function(TurboTabs) {
 
-		this.name = name;
+    TurboTabs.Page = function(name, label, color) {
+        this.name = name;
 
 		this.dom = {
 			button: $('<button class="page-btn">'),
@@ -110,13 +222,13 @@ $.event.special.tap.emitTapOnTaphold = false; // prevents tap after taphold
 			this.dom.button.css('background', 'white');
 			return this;
 		};
-	};
+    };
 
-	var Pages = function() {
+    TurboTabs.Pages = function(turboTabsInstance) {
 
 		var map = [],
-			pages = $('.pages'),
-			buttons = $('.buttons'),
+			pages = $(turboTabsInstance.element.querySelector('.pages')),
+			buttons = $(turboTabsInstance.element.querySelector('.buttons')),
 			current = null;
 
 		this.scrollTo = function(index) {
@@ -137,7 +249,7 @@ $.event.special.tap.emitTapOnTaphold = false; // prevents tap after taphold
 		};
 
 		this.add = function(page) {
-			if(page instanceof Page) {
+			if(page instanceof TurboTabs.Page) {
 				map.push(page);
 				pages.append(page.dom.page);
 				buttons.append(page.dom.button);
@@ -200,139 +312,30 @@ $.event.special.tap.emitTapOnTaphold = false; // prevents tap after taphold
 		};
 
 		observe.bind(this)();
-	};
-
-	var Bottom = function() {
-		var CLOSED = 0,
-			PREVIEW = 1,
-			FULL = 2;
-
-		var wrapper = $('.wrapper'),
-			mode = CLOSED,
-			dom = $('<div class="sheet bottom">');
-
-		wrapper.append(dom);
-
-		var close = function() {
-			APP.drop.hide();
-			dom.removeClass('preview').removeClass('full');
-		}.bind(this);
-
-		this.up = function() {
-			if(mode === CLOSED) {
-				dom.addClass('preview');
-				mode = PREVIEW;
-
-				APP.drop.onclick(close);
-			}
-			else if(mode === PREVIEW) {
-				dom.addClass('full').removeClass('preview');
-				mode = FULL;
-			}
-
-			if(mode !== CLOSED) APP.drop.show();
-		};
-
-		this.down = function() {
-			if(mode === FULL) {
-				dom.addClass('preview').removeClass('full');
-				mode = PREVIEW;
-			}
-			else if(mode === PREVIEW) {
-				dom.removeClass('preview');
-				mode = CLOSED;
-			}
-
-			if(mode === CLOSED) APP.drop.hide();
-		};
-
-		dom.text('menu główne serwisu');
-
-		this.opened = function() {
-			return mode !== CLOSED;
-		};
-
-	};
-
-	var Drop = function() {
-		var dom = $('<div class="drop">'),
-			click = null;
-
-		$('.wrapper').append(dom);
-		dom.hide();
-
-		this.show = function() {
-			dom.show();
-			setTimeout(function() {
-				dom.addClass('visible');
-			}, 10);
-			return this;
-		};
-
-		this.hide = function() {
-			dom.removeClass('visible');
-			setTimeout(function() {
-				dom.hide();
-			}, 300);
-			return this;
-		};
-
-		this.onclick = function(callback) {
-			if(callback) click = callback;
-			return this;
-		}
-
-		dom.click(function(event) {
-			if(click) click(event);
-		});
-	};
-
-	window.TurboTabs = function(element) {
-
-		(() => {
-			element.classList.add('wrapper');
-
-			const buttons = document.createElement('header');
-			buttons.classList.add('buttons');
-
-			const pages = document.createElement('div');
-			pages.classList.add('pages');
-
-			element.appendChild(buttons);
-			element.appendChild(pages);
-		})();
+    };
 
 
-		this.drop = new Drop();
-		this.pages = new Pages();
-		this.bottom = new Bottom();
+})(window.TurboTabs);
+(function(self) {
+    var Browser = {};
 
-		$(window).on('swipeup', function() {
-			if(this.bottom.opened()) {
-				this.bottom.up();
-			}
-		}.bind(this));
+    var isMobile = (function() {
+        try {
+            document.createEvent("TouchEvent");
+            return true;
+        }
+        catch(e) { }
 
-		$(window).on('swipedown', function() {
-			if(this.bottom.opened()) {
-				this.bottom.down();
-			}
-		}.bind(this));
+        return false;
+    })();
 
-	};
+    Object.defineProperty(Browser, 'isMobile', {
+        configurable: false,
+        enumerable: false,
+        get: function() {
+            return isMobile;
+        }
+    });
 
-	window.TurboTabs.Page = Page;
-
-})();
-
-const wrapper = document.getElementById('wrapper');
-const app = new TurboTabs(wrapper);
-
-app.pages.add(new TurboTabs.Page('one', 'Page 1', 'gray'));
-app.pages.add(new TurboTabs.Page('two', 'Page 2', 'green'));
-app.pages.add(new TurboTabs.Page('three', 'Page 3', 'teal'));
-app.pages.add(new TurboTabs.Page('four', 'Page 4', 'darkorange'));
-app.pages.add(new TurboTabs.Page('five', 'Page 5', 'lightblue'));
-app.pages.add(new TurboTabs.Page('six', 'Page 6', 'black'));
-
-app.pages.first();
+    self.Browser = Browser;
+})(window);
